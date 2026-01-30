@@ -25,7 +25,7 @@ DROP TYPE IF EXISTS client_status CASCADE;
 DROP TYPE IF EXISTS withdrawal_method CASCADE;
 
 CREATE TYPE account_type AS ENUM ('Business_Credit', 'Private_Credit', 'Bank_Transfer');
-CREATE TYPE parent_category AS ENUM ('COGS', 'OPEX', 'Financial');
+CREATE TYPE parent_category AS ENUM ('COGS', 'OPEX', 'Mixed', 'Financial');
 CREATE TYPE currency_code AS ENUM ('ILS', 'USD', 'EUR', 'GBP');
 CREATE TYPE beneficiary_type AS ENUM ('Business', 'Heli', 'Shahar');
 CREATE TYPE invoice_status AS ENUM ('Draft', 'Sent', 'Overdue', 'Paid');

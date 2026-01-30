@@ -2608,22 +2608,325 @@ fetch('/api/seed', { method: 'POST' }).then(r => r.json()).then(console.log)
 
 ---
 
-# 15. REMAINING WORK
+# 15. DASHBOARD, PARTNERS & ANALYTICS IMPLEMENTATION
 
-## 15.1 Not Yet Implemented
+## 15.1 Dashboard Page (`/dashboard`)
 
-- [ ] Dashboard page with computed stats
-- [ ] Partners page with balance calculations
-- [ ] Analytics page with charts
+**Status:** IMPLEMENTED
+
+### API Route: `/api/dashboard`
+
+Returns comprehensive financial metrics for the selected year:
+
+```typescript
+// Response structure
+{
+  data: {
+    totalIncome: number,      // Sum of paid invoices
+    cogs: number,             // Expenses with COGS category
+    opex: number,             // Expenses with OPEX category
+    financial: number,        // Expenses with Financial category
+    totalExpenses: number,    // Sum of all expenses
+    grossProfit: number,      // Income - COGS
+    grossMargin: number,      // (Income - COGS) / Income * 100
+    netProfit: number,        // Income - All Expenses
+    partners: {
+      heli: { earnings, withdrawals, available },
+      shahar: { earnings, withdrawals, available }
+    },
+    partnerDifference: number,  // Heli.available - Shahar.available
+    openInvoices: {
+      count, total, overdueCount, overdueTotal
+    }
+  }
+}
+```
+
+### Dashboard UI Components:
+- **Key Metrics Row**: Total Income (green), COGS (red), OPEX (cyan), Gross Margin (purple)
+- **Secondary Metrics Row**: Net Profit, Partner Balance, Open Invoices
+- **Partner Summary Cards**: Heli and Shahar cards showing earnings, withdrawn, available
+
+---
+
+## 15.2 Partners Page (`/partners`)
+
+**Status:** IMPLEMENTED
+
+### Features:
+- **Partner Balance Cards**: Large hero numbers showing available to withdraw
+- **Breakdown Details**: Earnings, withdrawn amounts
+- **Record Withdrawal Dialog**: Partner selection, amount, date, method, notes
+- **Withdrawal History Table**: Date, partner, amount, method, notes
+
+### Withdrawal Form Fields:
+| Field | Type | Notes |
+|-------|------|-------|
+| Partner | Select | Shows available balance in dropdown |
+| Amount | Number | Required |
+| Date | Date | Defaults to today |
+| Method | Select | Bank_Transfer, Cash, Check |
+| Notes | Text | Optional |
+
+---
+
+## 15.3 Analytics Page (`/analytics`)
+
+**Status:** IMPLEMENTED
+
+### API Route: `/api/analytics`
+
+Returns chart data for visualizations:
+
+```typescript
+{
+  data: {
+    monthlyData: [{ month, income, expenses, profit }],
+    categoryData: [{ name, value }],
+    parentCategoryData: [{ name, value, color }],
+    clientData: [{ name, value }],
+    summary: {
+      totalIncome, totalExpenses, netProfit,
+      avgMonthlyIncome, avgMonthlyExpenses
+    }
+  }
+}
+```
+
+### Charts Implemented (using Recharts):
+1. **Monthly Income vs Expenses** - Bar chart comparing income and expenses by month
+2. **Profit Trend** - Line chart showing net profit over time
+3. **Expenses by Type** - Pie chart (COGS/OPEX/Financial distribution)
+4. **Top Expense Categories** - Horizontal bar chart of top 6 categories
+5. **Income by Client** - Pie chart showing revenue per client
+
+### Dependencies Added:
+```bash
+npm install recharts
+```
+
+---
+
+# 16. DATABASE SCHEMA SETUP
+
+## 16.1 Schema File Location
+
+**File:** `supabase/schema.sql`
+
+This file must be run in Supabase SQL Editor before the app can function.
+
+### Tables Created:
+- `partners` - Heli and Shahar
+- `accounts` - Payment accounts (business/private)
+- `categories` - Expense categories with tax recognition
+- `lines_of_business` - Client industry sectors
+- `clients` - Customer information
+- `transactions` - Expenses with multi-currency support
+- `invoices` - Revenue tracking with split percentages
+- `withdrawals` - Partner withdrawal records
+- `exchange_rates` - Cached currency rates
+
+### ENUMs Defined:
+- `account_type`: Business_Credit, Private_Credit, Bank_Transfer
+- `parent_category`: COGS, OPEX, Financial
+- `currency_code`: ILS, USD, EUR, GBP
+- `beneficiary_type`: Business, Heli, Shahar
+- `invoice_status`: Draft, Sent, Overdue, Paid
+- `client_status`: Active, Inactive
+- `withdrawal_method`: Bank_Transfer, Cash, Check
+
+### Computed Columns:
+- `transactions.amount_ils` - Auto-calculated from amount * exchange_rate_to_ils
+- `invoices.amount_ils` - Auto-calculated from amount * exchange_rate_to_ils
+
+---
+
+# 17. REMAINING WORK
+
+## 17.1 Not Yet Implemented
+
 - [ ] Edit functionality for existing records
-- [ ] Delete functionality with confirmation
+- [ ] Delete functionality with confirmation dialogs
 - [ ] Year selector in sidebar (currently hardcoded to 2026)
-- [ ] Partner balance calculation algorithm
 - [ ] Real exchange rate API integration
+- [ ] Mobile responsive improvements
+- [ ] Loading skeletons instead of "Loading..." text
 
-## 15.2 Known Issues
+## 17.2 Known Limitations
 
 - Exchange rates are hardcoded (USD: 3.65, EUR: 3.95, GBP: 4.55)
-- Year filter is hardcoded to 2026 in some pages
-- No edit/delete buttons on table rows yet
-- Dashboard shows placeholder data
+- Year filter is hardcoded to 2026 in API calls
+- Partner balance calculation simplified (doesn't include company owes/partner owes adjustments)
+
+## 17.3 Setup Instructions
+
+1. **Create database tables:**
+   - Open Supabase SQL Editor
+   - Paste contents of `supabase/schema.sql`
+   - Run the SQL
+
+2. **Seed mock data:**
+   ```javascript
+   // In browser console on deployed site
+   fetch('/api/seed', { method: 'POST' }).then(r => r.json()).then(console.log)
+   ```
+
+3. **Verify pages load:**
+   - Dashboard: `/dashboard`
+   - Expenses: `/expenses`
+   - Invoices: `/invoices`
+   - Clients: `/clients`
+   - Partners: `/partners`
+   - Analytics: `/analytics`
+   - Configuration: `/configuration`
+
+---
+
+# 18. CHANGE LOG
+
+## 2026-01-30 - Number Input Arrows & Categories Update
+
+### Changes Made:
+- Removed +/- spinner arrows from all number input fields via CSS
+- Added 'Mixed' parent category for Israeli tax law compliance
+- Added orange color scheme for Mixed category
+- Updated expenses page to show category as: [Tag] Name format
+- Created SQL script for production categories with Hebrew descriptions
+
+### Files Modified:
+- `app/globals.css` - Added CSS to hide number input spinners, added badge-mixed class
+- `tailwind.config.ts` - Added mixed color (orange)
+- `app/(dashboard)/expenses/page.tsx` - Updated category display in table and dropdown
+
+### Files Created:
+- `supabase/update_categories.sql` - Production categories with Israeli tax law values
+
+### Notes:
+- Schema change required: `ALTER TYPE parent_category ADD VALUE 'Mixed'`
+- Run `update_categories.sql` in Supabase SQL Editor for production data
+- 19 categories total: COGS (3), OPEX (9), Mixed (5), Financial (2)
+
+---
+
+## 2026-01-30 - CLAUDE.md Auto-Instructions File
+
+### Changes Made:
+- Created `CLAUDE.md` in project root for automatic context loading
+- Claude Code reads this file at session start automatically
+
+### Files Created:
+- `CLAUDE.md` - Project instructions for Claude
+
+### Notes:
+- This ensures hooks workflow is followed in every new session
+- No need to remind Claude to read hooks manually
+
+---
+
+## 2026-01-30 - Dashboard, Partners & Analytics Implementation
+
+### Changes Made:
+- Implemented Dashboard page with real-time financial metrics
+- Implemented Partners page with withdrawal functionality
+- Implemented Analytics page with interactive charts (Recharts)
+- Created API routes: `/api/dashboard`, `/api/analytics`
+- Fixed TypeScript errors in analytics page (Tooltip formatter types)
+- Added recharts dependency for data visualization
+
+### Files Created:
+- `app/api/dashboard/route.ts` - Dashboard stats API
+- `app/api/analytics/route.ts` - Analytics data API
+
+### Files Modified:
+- `app/(dashboard)/dashboard/page.tsx` - Full implementation with stats cards
+- `app/(dashboard)/partners/page.tsx` - Full implementation with withdrawal dialog
+- `app/(dashboard)/analytics/page.tsx` - Charts with Recharts library
+- `package.json` - Added recharts dependency
+
+### Notes:
+- Recharts Tooltip formatter requires handling undefined values
+- Pie chart labels need nullish coalescing for percent values
+- All pages now fetch real data from Supabase
+- Build passes successfully with `npm run build`
+
+---
+
+## 2026-01-30 - Database Schema & Categories Setup (Production)
+
+### Changes Made:
+- Applied full database schema to Supabase production via MCP
+- Added 'Mixed' to parent_category enum (COGS, OPEX, Mixed, Financial)
+- Seeded 19 categories with Israeli Tax Law 2026 compliance:
+  - **COGS (3)**: Software Licenses, Subcontractors, Servers & Cloud
+  - **OPEX (9)**: Marketing, SaaS Tools, Professional Services, Office Supplies, Refreshments (80%), Business Gifts, Professional Training, Business Meals Foreign (100%), Business Meals Local (0%)
+  - **Mixed (5)**: Home Office Arnona (25%), Home Office Utilities (25%), Communication (100%), Vehicle (45%), Travel Abroad (100%)
+  - **Financial (2)**: Bank Fees (100%), Fines & Penalties (0%)
+- Updated TypeScript types to include 'Mixed' in ParentCategory
+- Updated local schema.sql to match production
+
+### Files Modified:
+- `types/index.ts` - Added 'Mixed' to ParentCategory type
+- `supabase/schema.sql` - Added 'Mixed' to parent_category enum
+
+### Supabase Migrations Applied:
+- `create_initial_schema` - Full database schema with all tables
+- `seed_categories` - 19 categories with Hebrew descriptions
+
+### Notes:
+- Expenses form already implements [ParentCategory] + CategoryName dropdown pattern
+- Color coding: COGS=red, OPEX=cyan, Mixed=orange, Financial=purple
+- Tax recognition percentages are auto-filled when category is selected
+- Build passes successfully
+
+---
+
+## 2026-01-30 - UI Icons & Partner Colors + Seed Data
+
+### Changes Made:
+- Seeded partners table (Heli, Shahar)
+- Seeded accounts table (5 accounts: Business Bank, Heli/Shahar Business Cards, Heli/Shahar Private Cards)
+- Seeded lines_of_business table (9 LOBs)
+- Updated expenses page with improved UI:
+  - Category dropdown: Solid colored tags (COGS=red, OPEX=cyan, Mixed=orange, Financial=purple)
+  - Payment Account dropdown: Icons with partner colors (pink for Heli, blue for Shahar, cyan for Business)
+  - Beneficiary dropdown: Icons with partner colors
+  - Table view: Consistent icons and colored names
+
+### Partner Color System:
+- Heli: #ff6b9d (Pink)
+- Shahar: #5ac8fa (Blue)
+- Business: #64d2ff (Cyan)
+
+### Account Icons:
+- Bank_Transfer: Building2 icon
+- Business_Credit: CreditCard icon
+- Private_Credit: Wallet icon
+
+### Files Modified:
+- `app/(dashboard)/expenses/page.tsx` - Enhanced UI with icons and partner colors
+
+### Supabase Migration Applied:
+- `seed_partners_and_accounts` - Partners, Accounts, Lines of Business
+
+### Notes:
+- Payment account dropdown now populated with 5 accounts
+- Build passes successfully
+
+---
+
+# 19. DEVELOPMENT WORKFLOW (CLAUDE_HOOKS)
+
+## Pre-Task Checklist:
+1. Read frontend-design skill (for UI work)
+2. Read this implementation plan for project context
+
+## Post-Task Checklist:
+1. Run `npx tsc --noEmit` - TypeScript validation
+2. Run `npm run build` - Full build verification
+3. Update this document with changes made
+
+## Architecture Rules (Non-Negotiable):
+- Soft delete only (`deleted_at` timestamp)
+- Always filter `deleted_at IS NULL` in queries
+- React state with useState for client components
+- Single source of truth: this implementation plan

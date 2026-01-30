@@ -72,6 +72,10 @@ const config: Config = {
   				'50': 'rgba(168, 85, 247, 0.15)',
   				DEFAULT: '#a855f7'
   			},
+  			mixed: {
+  				'50': 'rgba(255, 149, 0, 0.15)',
+  				DEFAULT: '#ff9500'
+  			},
   			border: {
   				DEFAULT: 'hsl(var(--border))',
   				secondary: 'rgba(255, 255, 255, 0.05)',

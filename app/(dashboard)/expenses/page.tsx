@@ -6,12 +6,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Search, CreditCard, Briefcase, User } from 'lucide-react'
+import { Plus, Search, CreditCard, Building2, User, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Transaction, Category, Account } from '@/types'
 
 const CURRENCIES = ['ILS', 'USD', 'EUR', 'GBP'] as const
 const BENEFICIARIES = ['Business', 'Heli', 'Shahar'] as const
+
+// Partner colors
+const PARTNER_COLORS = {
+  Heli: '#ff6b9d',      // Pink
+  Shahar: '#5ac8fa',    // Blue
+  Business: '#64d2ff',  // Cyan
+} as const
 
 export default function ExpensesPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
@@ -119,16 +126,52 @@ export default function ExpensesPage() {
     return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
+  // Solid colored tags matching the design
   const parentCategoryColors: Record<string, string> = {
-    COGS: 'bg-red/20 text-red',
-    OPEX: 'bg-cyan/20 text-cyan',
-    Financial: 'bg-purple/20 text-purple',
+    COGS: '#ff3b30',
+    OPEX: '#30b0c7',
+    Financial: '#bf5af2',
+    Mixed: '#ff9500',
   }
 
-  const beneficiaryIcons: Record<string, React.ReactNode> = {
-    Business: <Briefcase className="w-3 h-3" />,
-    Heli: <User className="w-3 h-3" />,
-    Shahar: <User className="w-3 h-3" />,
+  // Category tag component
+  function CategoryTag({ parentCategory }: { parentCategory: string }) {
+    return (
+      <span
+        className="px-2 py-0.5 rounded text-xs font-semibold text-white"
+        style={{ backgroundColor: parentCategoryColors[parentCategory] || '#666' }}
+      >
+        {parentCategory}
+      </span>
+    )
+  }
+
+  // Helper to get account icon color based on name
+  function getAccountColor(accountName: string): string {
+    if (accountName.includes('Heli')) return PARTNER_COLORS.Heli
+    if (accountName.includes('Shahar')) return PARTNER_COLORS.Shahar
+    return PARTNER_COLORS.Business
+  }
+
+  // Helper to get account icon based on type
+  function getAccountIcon(account: Account) {
+    const color = getAccountColor(account.name)
+    if (account.type === 'Bank_Transfer') {
+      return <Building2 className="w-4 h-4" style={{ color }} />
+    }
+    if (account.type === 'Private_Credit') {
+      return <Wallet className="w-4 h-4" style={{ color }} />
+    }
+    return <CreditCard className="w-4 h-4" style={{ color }} />
+  }
+
+  // Beneficiary icon with color
+  function getBeneficiaryIcon(beneficiary: string) {
+    const color = PARTNER_COLORS[beneficiary as keyof typeof PARTNER_COLORS] || PARTNER_COLORS.Business
+    if (beneficiary === 'Business') {
+      return <Building2 className="w-4 h-4" style={{ color }} />
+    }
+    return <User className="w-4 h-4" style={{ color }} />
   }
 
   const filteredTransactions = transactions.filter(t =>
@@ -197,10 +240,13 @@ export default function ExpensesPage() {
                 <Label>Category *</Label>
                 <Select value={form.category_id} onValueChange={handleCategoryChange}>
                   <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="max-h-[300px]">
                     {categories.map((c) => (
                       <SelectItem key={c.id} value={c.id}>
-                        [{c.parent_category}] {c.name}
+                        <div className="flex items-center gap-3">
+                          <CategoryTag parentCategory={c.parent_category} />
+                          <span className="text-sm">{c.name}</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -212,7 +258,12 @@ export default function ExpensesPage() {
                   <SelectTrigger><SelectValue placeholder="Select account" /></SelectTrigger>
                   <SelectContent>
                     {accounts.map((a) => (
-                      <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>
+                      <SelectItem key={a.id} value={a.id}>
+                        <div className="flex items-center gap-2">
+                          {getAccountIcon(a)}
+                          <span>{a.name}</span>
+                        </div>
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -224,7 +275,12 @@ export default function ExpensesPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {BENEFICIARIES.map((b) => (
-                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                        <SelectItem key={b} value={b}>
+                          <div className="flex items-center gap-2">
+                            {getBeneficiaryIcon(b)}
+                            <span>{b}</span>
+                          </div>
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -286,24 +342,27 @@ export default function ExpensesPage() {
             </thead>
             <tbody>
               {filteredTransactions.map((txn) => (
-                <tr key={txn.id} className="border-b border-border/50">
+                <tr key={txn.id} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
                   <td className="p-4">
                     <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-muted-foreground" />
+                      {txn.account && getAccountIcon(txn.account)}
                       <span className="text-sm">{txn.account?.name}</span>
                     </div>
                   </td>
                   <td className="p-4 text-sm">{formatDate(txn.date)}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${parentCategoryColors[txn.category?.parent_category || 'OPEX']}`}>
-                      {txn.category?.name}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <CategoryTag parentCategory={txn.category?.parent_category || 'OPEX'} />
+                      <span className="text-sm">{txn.category?.name}</span>
+                    </div>
                   </td>
                   <td className="p-4 text-sm">{txn.supplier_name}</td>
                   <td className="p-4">
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      {beneficiaryIcons[txn.beneficiary]}
-                      {txn.beneficiary}
+                    <div className="flex items-center gap-2 text-sm">
+                      {getBeneficiaryIcon(txn.beneficiary)}
+                      <span style={{ color: PARTNER_COLORS[txn.beneficiary as keyof typeof PARTNER_COLORS] || PARTNER_COLORS.Business }}>
+                        {txn.beneficiary}
+                      </span>
                     </div>
                   </td>
                   <td className="p-4 text-right">

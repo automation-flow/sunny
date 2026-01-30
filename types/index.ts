@@ -1,6 +1,6 @@
 // Database Enums
 export type AccountType = 'Business_Credit' | 'Private_Credit' | 'Bank_Transfer'
-export type ParentCategory = 'COGS' | 'OPEX' | 'Financial'
+export type ParentCategory = 'COGS' | 'OPEX' | 'Mixed' | 'Financial'
 export type CurrencyCode = 'ILS' | 'USD' | 'EUR' | 'GBP'
 export type BeneficiaryType = 'Business' | 'Heli' | 'Shahar'
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Overdue' | 'Paid'
