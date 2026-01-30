@@ -336,6 +336,7 @@ export default function ConfigurationPage() {
                 <thead>
                   <tr className="border-b border-border">
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Name</th>
+                    <th className="text-left p-4 text-sm font-medium text-muted-foreground">Description</th>
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Type</th>
                     <th className="text-left p-4 text-sm font-medium text-muted-foreground">Tax %</th>
                     <th className="text-right p-4 text-sm font-medium text-muted-foreground">Actions</th>
@@ -344,7 +345,12 @@ export default function ConfigurationPage() {
                 <tbody>
                   {categories.map((cat) => (
                     <tr key={cat.id} className="border-b border-border/50 hover:bg-white/[0.02] transition-colors">
-                      <td className="p-4">{cat.name}</td>
+                      <td className="p-4 font-medium">{cat.name}</td>
+                      <td className="p-4 max-w-xs">
+                        <span className="text-sm text-muted-foreground whitespace-pre-wrap break-words" dir="rtl">
+                          {cat.description || '-'}
+                        </span>
+                      </td>
                       <td className="p-4">
                         <span
                           className="px-2 py-1 rounded text-xs font-semibold text-white"
