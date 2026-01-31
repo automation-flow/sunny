@@ -3056,6 +3056,38 @@ This file must be run in Supabase SQL Editor before the app can function.
 
 ---
 
+## 2026-01-31 - Real-Time Exchange Rates
+
+### Changes:
+- Replaced hardcoded exchange rates with real-time API fetching
+- Exchange rates are now fetched for the **specific transaction date**
+
+### New File Created:
+- `lib/exchange-rates.ts` - Exchange rate utility with:
+  - **Primary API**: exchangerate.host (free, no API key required)
+  - **Fallback API**: Frankfurter API (uses ECB data)
+  - **Last resort**: Hardcoded fallback rates
+  - **Caching**: In-memory cache with 24-hour TTL to reduce API calls
+
+### Files Modified:
+- `app/api/expenses/route.ts` - Fetches rate for transaction date
+- `app/api/invoices/route.ts` - Fetches rate for invoice issue date
+- `app/api/cron/process-recurring/route.ts` - Fetches rate for today's date
+
+### How It Works:
+```typescript
+// Usage example
+import { getExchangeRate } from '@/lib/exchange-rates'
+
+const rate = await getExchangeRate('USD', '2026-01-15')
+// Returns: ~3.65 (actual rate for that date)
+```
+
+### Supported Currencies:
+USD, EUR, GBP, CHF, CAD, AUD, JPY (and any other supported by the API)
+
+---
+
 # 19. DEVELOPMENT WORKFLOW (CLAUDE_HOOKS)
 
 ## Pre-Task Checklist:
