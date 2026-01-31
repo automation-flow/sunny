@@ -11,7 +11,7 @@ export async function GET(request: Request) {
   const beneficiary = searchParams.get('beneficiary')
 
   let query = supabase
-    .from('transactions')
+    .from('expenses')
     .select('*, category:categories(*), account:accounts(*), client:clients(*), creator:partners!created_by(*)')
     .is('deleted_at', null)
     .order('date', { ascending: false })
@@ -67,8 +67,40 @@ export async function POST(request: Request) {
     taxPercent = category?.tax_recognition_percent || 1.0
   }
 
+  let recurringExpenseId = null
+
+  // If this is a recurring expense, create the recurring_expense record first
+  if (body.is_recurring && body.recurrence_day) {
+    const { data: recurringData, error: recurringError } = await supabase
+      .from('recurring_expenses')
+      .insert({
+        supplier_name: body.supplier_name,
+        amount: body.amount,
+        currency: body.currency || 'ILS',
+        category_id: body.category_id,
+        account_id: body.account_id,
+        beneficiary: body.beneficiary || 'Business',
+        applied_tax_percent: taxPercent,
+        notes: body.notes || null,
+        recurrence_day: body.recurrence_day,
+        start_date: body.date,
+        end_date: body.recurrence_end_date || null,
+        last_generated_date: body.date, // Mark this month as already generated
+        created_by: body.created_by || null,
+      })
+      .select()
+      .single()
+
+    if (recurringError) {
+      return NextResponse.json({ error: recurringError.message }, { status: 500 })
+    }
+
+    recurringExpenseId = recurringData.id
+  }
+
+  // Create the expense
   const { data, error } = await supabase
-    .from('transactions')
+    .from('expenses')
     .insert({
       date: body.date,
       supplier_name: body.supplier_name,
@@ -82,6 +114,8 @@ export async function POST(request: Request) {
       client_id: body.client_id || null,
       invoice_url: body.invoice_url || null,
       notes: body.notes || null,
+      recurring_expense_id: recurringExpenseId,
+      created_by: body.created_by || null,
     })
     .select('*, category:categories(*), account:accounts(*), client:clients(*)')
     .single()
@@ -90,5 +124,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data }, { status: 201 })
+  return NextResponse.json({ data, recurring_expense_id: recurringExpenseId }, { status: 201 })
 }

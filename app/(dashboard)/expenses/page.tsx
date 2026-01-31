@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Search, CreditCard, Building2, User, Wallet, Bot, Calendar } from 'lucide-react'
+import { Plus, Search, CreditCard, Building2, User, Wallet, Bot, Calendar, Repeat } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import type { Transaction, Category, Account } from '@/types'
 
@@ -43,6 +44,9 @@ export default function ExpensesPage() {
     beneficiary: 'Business',
     applied_tax_percent: '',
     notes: '',
+    is_recurring: false,
+    recurrence_day: '',
+    recurrence_end_date: '',
   })
 
   useEffect(() => {
@@ -55,7 +59,7 @@ export default function ExpensesPage() {
     try {
       const yearParam = selectedYear === 'all' ? '' : `year=${selectedYear}`
       const [txnRes, catRes, accRes] = await Promise.all([
-        fetch(`/api/transactions${yearParam ? `?${yearParam}` : ''}`),
+        fetch(`/api/expenses${yearParam ? `?${yearParam}` : ''}`),
         fetch('/api/categories'),
         fetch('/api/accounts'),
       ])
@@ -78,8 +82,12 @@ export default function ExpensesPage() {
       toast.error('Please fill in all required fields')
       return
     }
+    if (form.is_recurring && !form.recurrence_day) {
+      toast.error('Please specify the day of month for recurring expenses')
+      return
+    }
     try {
-      const res = await fetch('/api/transactions', {
+      const res = await fetch('/api/expenses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -92,10 +100,13 @@ export default function ExpensesPage() {
           beneficiary: form.beneficiary,
           applied_tax_percent: form.applied_tax_percent ? parseFloat(form.applied_tax_percent) / 100 : undefined,
           notes: form.notes || null,
+          is_recurring: form.is_recurring,
+          recurrence_day: form.is_recurring ? parseInt(form.recurrence_day) : undefined,
+          recurrence_end_date: form.is_recurring && form.recurrence_end_date ? form.recurrence_end_date : undefined,
         }),
       })
       if (!res.ok) throw new Error('Failed to add expense')
-      toast.success('Expense added')
+      toast.success(form.is_recurring ? 'Recurring expense added' : 'Expense added')
       setDialogOpen(false)
       setForm({
         date: new Date().toISOString().split('T')[0],
@@ -107,6 +118,9 @@ export default function ExpensesPage() {
         beneficiary: 'Business',
         applied_tax_percent: '',
         notes: '',
+        is_recurring: false,
+        recurrence_day: '',
+        recurrence_end_date: '',
       })
       fetchData()
     } catch {
@@ -336,7 +350,51 @@ export default function ExpensesPage() {
                   placeholder="Optional notes"
                 />
               </div>
-              <Button onClick={handleAddExpense} className="w-full bg-blue hover:bg-blue/90">Add Expense</Button>
+
+              {/* Recurring Expense Checkbox */}
+              <div className="flex items-center space-x-2 pt-2">
+                <Checkbox
+                  id="recurring"
+                  checked={form.is_recurring}
+                  onCheckedChange={(checked) => setForm({ ...form, is_recurring: checked === true })}
+                />
+                <label
+                  htmlFor="recurring"
+                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex items-center gap-2"
+                >
+                  <Repeat className="w-4 h-4 text-muted-foreground" />
+                  Recurring Expense
+                </label>
+              </div>
+
+              {/* Recurring Settings (shown when checkbox is checked) */}
+              {form.is_recurring && (
+                <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-background-secondary border border-border">
+                  <div className="space-y-2">
+                    <Label>Day of Month *</Label>
+                    <Input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={form.recurrence_day}
+                      onChange={(e) => setForm({ ...form, recurrence_day: e.target.value })}
+                      placeholder="1-31"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>End Date (Optional)</Label>
+                    <Input
+                      type="date"
+                      value={form.recurrence_end_date}
+                      onChange={(e) => setForm({ ...form, recurrence_end_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <Button onClick={handleAddExpense} className="w-full bg-blue hover:bg-blue/90">
+                {form.is_recurring ? 'Add Recurring Expense' : 'Add Expense'}
+              </Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -405,7 +463,16 @@ export default function ExpensesPage() {
                       <span className="text-sm">{txn.category?.name}</span>
                     </div>
                   </td>
-                  <td className="p-4 text-sm">{txn.supplier_name}</td>
+                  <td className="p-4 text-sm">
+                    <div className="flex items-center gap-1.5">
+                      {txn.recurring_expense_id && (
+                        <span title="Recurring expense">
+                          <Repeat className="w-3.5 h-3.5 text-blue" />
+                        </span>
+                      )}
+                      {txn.supplier_name}
+                    </div>
+                  </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2 text-sm">
                       {getBeneficiaryIcon(txn.beneficiary)}

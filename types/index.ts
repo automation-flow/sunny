@@ -72,7 +72,7 @@ export interface ClientStats {
   invoice_count: number
 }
 
-export interface Transaction {
+export interface Expense {
   id: string
   date: string
   supplier_name: string
@@ -91,6 +91,35 @@ export interface Transaction {
   invoice_url: string | null
   notes: string | null
   created_by: string | null
+  creator?: Partner
+  recurring_expense_id?: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+
+// Backwards compatibility alias
+export type Transaction = Expense
+
+export interface RecurringExpense {
+  id: string
+  supplier_name: string
+  amount: number
+  currency: CurrencyCode
+  category_id: string
+  category?: Category
+  account_id: string
+  account?: Account
+  beneficiary: BeneficiaryType
+  applied_tax_percent: number
+  notes: string | null
+  recurrence_day: number
+  start_date: string
+  end_date: string | null
+  last_generated_date: string | null
+  is_active: boolean
+  created_by: string | null
+  creator?: Partner
   created_at: string
   updated_at: string
   deleted_at: string | null
@@ -181,7 +210,7 @@ export interface PaginatedResponse<T> {
 }
 
 // Form Input Types
-export interface TransactionInput {
+export interface ExpenseInput {
   date: string
   supplier_name: string
   amount: number
@@ -193,7 +222,14 @@ export interface TransactionInput {
   client_id?: string
   invoice_url?: string
   notes?: string
+  // Recurring fields
+  is_recurring?: boolean
+  recurrence_day?: number
+  recurrence_end_date?: string
 }
+
+// Backwards compatibility alias
+export type TransactionInput = ExpenseInput
 
 export interface InvoiceInput {
   invoice_number: string
