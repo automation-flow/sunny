@@ -138,7 +138,7 @@ export default function PartnersPage() {
                   <SelectContent>
                     {heliPartner && (
                       <SelectItem value={heliPartner.id}>
-                        <span className="text-heli">Heli</span>
+                        <span>Heli</span>
                         <span className="text-muted-foreground ml-2">
                           (Available: {formatCurrency(partnerData?.heli.available || 0)})
                         </span>
@@ -146,7 +146,7 @@ export default function PartnersPage() {
                     )}
                     {shaharPartner && (
                       <SelectItem value={shaharPartner.id}>
-                        <span className="text-shahar">Shahar</span>
+                        <span>Shahar</span>
                         <span className="text-muted-foreground ml-2">
                           (Available: {formatCurrency(partnerData?.shahar.available || 0)})
                         </span>
@@ -250,7 +250,7 @@ export default function PartnersPage() {
                 {withdrawals.map((w) => (
                   <tr key={w.id} className="border-b border-border/50">
                     <td className="p-4">
-                      <span className={w.partner?.name === 'Heli' ? 'text-heli font-medium' : 'text-shahar font-medium'}>
+                      <span className="font-medium">
                         {w.partner?.name}
                       </span>
                     </td>
@@ -287,13 +287,12 @@ function PartnerCard({
   loading: boolean
   formatCurrency: (amount: number) => string
 }) {
-  const colorClass = color === 'heli' ? 'text-heli' : 'text-shahar'
   const borderClass = color === 'heli' ? 'border-heli/30' : 'border-shahar/30'
 
   return (
     <Card className={`glass-card ${borderClass}`}>
       <CardHeader>
-        <CardTitle className={`text-xl ${colorClass}`}>
+        <CardTitle className="text-xl">
           {name}
         </CardTitle>
       </CardHeader>

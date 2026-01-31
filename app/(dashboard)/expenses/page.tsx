@@ -308,7 +308,7 @@ export default function ExpensesPage() {
       return (
         <div className="flex items-center gap-1.5">
           <User className="w-4 h-4" style={{ color }} />
-          <span style={{ color }}>{creator.name}</span>
+          <span>{creator.name}</span>
         </div>
       )
     }
@@ -573,9 +573,7 @@ export default function ExpensesPage() {
                   <td className="p-4">
                     <div className="flex items-center gap-2 text-sm">
                       {getBeneficiaryIcon(txn.beneficiary)}
-                      <span style={{ color: PARTNER_COLORS[txn.beneficiary as keyof typeof PARTNER_COLORS] || PARTNER_COLORS.Business }}>
-                        {txn.beneficiary}
-                      </span>
+                      <span>{txn.beneficiary}</span>
                     </div>
                   </td>
                   <td className="p-4 text-right">

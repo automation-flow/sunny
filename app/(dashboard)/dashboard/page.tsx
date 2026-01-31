@@ -155,7 +155,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card className="glass-card border-heli/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-heli">Heli</CardTitle>
+            <CardTitle className="text-lg">Heli</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
@@ -177,7 +177,7 @@ export default function DashboardPage() {
 
         <Card className="glass-card border-shahar/30">
           <CardHeader className="pb-2">
-            <CardTitle className="text-lg text-shahar">Shahar</CardTitle>
+            <CardTitle className="text-lg">Shahar</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex justify-between">
