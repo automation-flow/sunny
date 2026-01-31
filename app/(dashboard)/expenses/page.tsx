@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Plus, Search, CreditCard, Building2, User, Wallet } from 'lucide-react'
+import { Plus, Search, CreditCard, Building2, User, Wallet, Bot, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import type { Transaction, Category, Account } from '@/types'
 
@@ -27,6 +27,11 @@ export default function ExpensesPage() {
   const [loading, setLoading] = useState(true)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [search, setSearch] = useState('')
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
+
+  // Generate year options (current year back to 2024, plus "All Time")
+  const currentYear = new Date().getFullYear()
+  const yearOptions = ['all', ...Array.from({ length: currentYear - 2023 }, (_, i) => (currentYear - i).toString())]
 
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -42,14 +47,15 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     fetchData()
-  }, [])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedYear])
 
   async function fetchData() {
     setLoading(true)
     try {
-      const currentYear = new Date().getFullYear()
+      const yearParam = selectedYear === 'all' ? '' : `year=${selectedYear}`
       const [txnRes, catRes, accRes] = await Promise.all([
-        fetch(`/api/transactions?year=${currentYear}`),
+        fetch(`/api/transactions${yearParam ? `?${yearParam}` : ''}`),
         fetch('/api/categories'),
         fetch('/api/accounts'),
       ])
@@ -173,6 +179,32 @@ export default function ExpensesPage() {
       return <Building2 className="w-4 h-4" style={{ color }} />
     }
     return <User className="w-4 h-4" style={{ color }} />
+  }
+
+  // Get creator display (Added By column)
+  function getCreatorDisplay(txn: Transaction) {
+    // If created_by is null, it's auto-generated
+    if (!txn.created_by) {
+      return (
+        <div className="flex items-center gap-1.5">
+          <Bot className="w-4 h-4 text-muted-foreground" />
+          <span className="text-muted-foreground">Auto</span>
+        </div>
+      )
+    }
+    // If we have creator info from the joined partner
+    const creator = (txn as Transaction & { creator?: { name: string; icon_color: string } }).creator
+    if (creator) {
+      const color = creator.icon_color === 'pink' ? PARTNER_COLORS.Heli : PARTNER_COLORS.Shahar
+      return (
+        <div className="flex items-center gap-1.5">
+          <User className="w-4 h-4" style={{ color }} />
+          <span style={{ color }}>{creator.name}</span>
+        </div>
+      )
+    }
+    // Fallback
+    return <span className="text-muted-foreground">—</span>
   }
 
   const filteredTransactions = transactions.filter(t =>
@@ -310,15 +342,30 @@ export default function ExpensesPage() {
         </Dialog>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search expenses..."
-          className="pl-10"
-        />
+      {/* Filters */}
+      <div className="flex gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search expenses..."
+            className="pl-10"
+          />
+        </div>
+        <Select value={selectedYear} onValueChange={setSelectedYear}>
+          <SelectTrigger className="w-[140px]">
+            <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {yearOptions.map((year) => (
+              <SelectItem key={year} value={year}>
+                {year === 'all' ? 'All Time' : year}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Table */}
@@ -339,6 +386,7 @@ export default function ExpensesPage() {
                 <th className="text-left p-4 text-sm font-medium text-muted-foreground">Supplier</th>
                 <th className="text-left p-4 text-sm font-medium text-muted-foreground">For</th>
                 <th className="text-right p-4 text-sm font-medium text-muted-foreground">Amount</th>
+                <th className="text-left p-4 text-sm font-medium text-muted-foreground">Added By</th>
               </tr>
             </thead>
             <tbody>
@@ -371,6 +419,9 @@ export default function ExpensesPage() {
                     {txn.currency !== 'ILS' && (
                       <div className="text-xs text-muted-foreground">{formatCurrency(txn.amount, txn.currency)}</div>
                     )}
+                  </td>
+                  <td className="p-4 text-sm">
+                    {getCreatorDisplay(txn)}
                   </td>
                 </tr>
               ))}

@@ -5,18 +5,23 @@ export async function GET(request: Request) {
   const supabase = await createClient()
   const { searchParams } = new URL(request.url)
 
-  const year = searchParams.get('year') || new Date().getFullYear().toString()
+  const year = searchParams.get('year')
   const search = searchParams.get('search')
   const category_id = searchParams.get('category_id')
   const beneficiary = searchParams.get('beneficiary')
 
   let query = supabase
     .from('transactions')
-    .select('*, category:categories(*), account:accounts(*), client:clients(*)')
+    .select('*, category:categories(*), account:accounts(*), client:clients(*), creator:partners!created_by(*)')
     .is('deleted_at', null)
-    .gte('date', `${year}-01-01`)
-    .lte('date', `${year}-12-31`)
     .order('date', { ascending: false })
+
+  // Only filter by year if specified (otherwise show all)
+  if (year) {
+    query = query
+      .gte('date', `${year}-01-01`)
+      .lte('date', `${year}-12-31`)
+  }
 
   if (search) {
     query = query.or(`supplier_name.ilike.%${search}%,notes.ilike.%${search}%`)
