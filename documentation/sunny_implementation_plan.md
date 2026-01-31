@@ -3027,6 +3027,35 @@ This file must be run in Supabase SQL Editor before the app can function.
 
 ---
 
+## 2026-01-31 - Color System Updates
+
+### Changes:
+1. **Business color changed to purple**: Updated from cyan (#64d2ff) to purple (#bf5af2)
+2. **Icons only colored, text remains white**: Partner/beneficiary names now use default text color
+3. **Auto-set created_by**: API now automatically captures authenticated user when adding expenses
+
+### Color Scheme (Final):
+- **Heli**: Pink (#ff6b9d) - icons only
+- **Shahar**: Blue (#5ac8fa) - icons only
+- **Business**: Purple (#bf5af2) - icons only
+- Text labels remain in default white/foreground color
+
+### Files Modified:
+- `app/(dashboard)/expenses/page.tsx` - Removed colored text from beneficiary and creator names
+- `app/(dashboard)/dashboard/page.tsx` - Removed colored text from partner card titles
+- `app/(dashboard)/partners/page.tsx` - Removed colored text from partner names in dropdowns and tables
+- `app/(dashboard)/configuration/page.tsx` - Updated default color to purple
+- `app/globals.css` - Updated --color-business to purple
+- `tailwind.config.ts` - Updated business color to purple
+- `app/api/expenses/route.ts` - Auto-set created_by from authenticated user
+- `app/api/accounts/route.ts` - Updated default icon_color to purple
+- `app/api/lob/route.ts` - Updated default icon_color to purple
+
+### Database Updates:
+- Updated all existing expenses with `created_by = NULL` to Heli's partner ID
+
+---
+
 # 19. DEVELOPMENT WORKFLOW (CLAUDE_HOOKS)
 
 ## Pre-Task Checklist:
