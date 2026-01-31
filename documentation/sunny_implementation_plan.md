@@ -2952,6 +2952,53 @@ This file must be run in Supabase SQL Editor before the app can function.
 
 ---
 
+## 2026-01-31 - Recurring Expenses Feature + Bug Fixes
+
+### Bug Fixes:
+- **Expenses not showing in UI**: Added year selector with "All Time" option to fix 2025 expenses not showing
+- **Created by tracking**: API now joins `created_by` with partners table, UI displays "Added By" column with partner colors
+
+### Major Changes - Rename transactions → expenses:
+- Database table renamed from `transactions` to `expenses`
+- API routes renamed from `/api/transactions` to `/api/expenses`
+- TypeScript types: `Transaction` → `Expense` (with backwards compatibility alias)
+
+### Recurring Expenses Feature:
+- **New table**: `recurring_expenses` for storing recurring templates
+- **New API routes**:
+  - GET/POST `/api/recurring-expenses` - List/create recurring expenses
+  - GET/PATCH/DELETE `/api/recurring-expenses/[id]` - Individual recurring expense operations
+  - GET/POST `/api/cron/process-recurring` - Daily cron endpoint
+- **UI Changes**:
+  - Checkbox "Recurring Expense" in Add Expense modal
+  - Day of Month (1-31) field when recurring is checked
+  - Optional End Date field
+  - Repeat icon (🔄) in expenses table for recurring items
+- **Cron**: Vercel cron configured to run daily at 6AM
+
+### Files Created:
+- `app/api/recurring-expenses/route.ts`
+- `app/api/recurring-expenses/[id]/route.ts`
+- `app/api/cron/process-recurring/route.ts`
+
+### Files Modified:
+- `app/api/expenses/route.ts` (renamed from transactions, handles recurring)
+- `app/api/expenses/[id]/route.ts` (renamed from transactions)
+- `app/(dashboard)/expenses/page.tsx` - Year selector, Added By column, recurring checkbox
+- `types/index.ts` - Expense, RecurringExpense types
+- `vercel.json` - Added cron configuration
+
+### Supabase Migrations Applied:
+- `rename_transactions_to_expenses` - Renamed table and indexes
+- `add_recurring_expenses` - Created recurring_expenses table, added recurring_expense_id to expenses
+
+### Notes:
+- Build passes successfully
+- Cron requires Vercel Pro plan (can also be triggered manually via GET/POST)
+- n8n can call PATCH `/api/expenses/[id]` to update invoice_url field
+
+---
+
 # 19. DEVELOPMENT WORKFLOW (CLAUDE_HOOKS)
 
 ## Pre-Task Checklist:
