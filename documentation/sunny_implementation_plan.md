@@ -3197,3 +3197,51 @@ Net Available = Profits + Current Account Balance - Already Withdrawn
 - Fairness line shows how much more/less you drew compared to other partner
 - Negative "vs Partner" (red) = you drew more benefits
 - Positive "vs Partner" (green) = you drew less benefits
+
+---
+
+## 2026-02-01 - Expenses Summary Cards & Currency Formatting Fix
+
+### Changes:
+
+**1. Expenses Page Summary Cards**
+Added two summary cards above the filters on the Expenses page:
+- **Year Total**: Shows total expenses for the selected year (respects year filter) with expense count
+- **Month Total**: Shows total expenses for the current calendar month with expense count
+
+**2. Currency Formatting - 2 Decimal Places**
+Updated all currency display across the app to show 2 decimal places (e.g., ₪20.45 instead of ₪20).
+
+### Files Modified:
+- `app/(dashboard)/expenses/page.tsx`:
+  - Added summary cards above filters
+  - Calculates year total based on selected year filter
+  - Calculates current month total from displayed transactions
+
+- `app/(dashboard)/analytics/page.tsx`:
+  - Changed `maximumFractionDigits: 0` to `minimumFractionDigits: 2, maximumFractionDigits: 2`
+
+- `app/(dashboard)/dashboard/page.tsx`:
+  - Changed `maximumFractionDigits: 0` to `minimumFractionDigits: 2, maximumFractionDigits: 2`
+
+- `app/(dashboard)/clients/page.tsx`:
+  - Changed `maximumFractionDigits: 0` to `minimumFractionDigits: 2, maximumFractionDigits: 2`
+
+- `app/(dashboard)/partners/page.tsx`:
+  - Changed `maximumFractionDigits: 0` to `minimumFractionDigits: 2, maximumFractionDigits: 2`
+
+- `app/(dashboard)/invoices/page.tsx`:
+  - Changed `maximumFractionDigits: 0` to `minimumFractionDigits: 2, maximumFractionDigits: 2`
+
+### Verification:
+- TypeScript check: ✅ Passed
+- Build: ✅ Passed
+
+### UI Preview:
+```
+┌─────────────────────┐  ┌─────────────────────┐
+│ 2026 Total          │  │ February 2026       │
+│ ₪45,230.50          │  │ ₪8,150.75           │
+│ 23 expenses         │  │ 5 expenses          │
+└─────────────────────┘  └─────────────────────┘
+```

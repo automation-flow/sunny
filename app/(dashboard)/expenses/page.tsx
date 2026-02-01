@@ -321,6 +321,24 @@ export default function ExpensesPage() {
     t.notes?.toLowerCase().includes(search.toLowerCase())
   )
 
+  // Calculate totals for summary cards
+  const currentMonth = new Date().getMonth()
+  const currentYear = new Date().getFullYear()
+
+  // Year total (based on selected filter, or all time if 'all')
+  const yearTotal = transactions.reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+  const yearCount = transactions.length
+  const yearLabel = selectedYear === 'all' ? 'All Time' : selectedYear
+
+  // Current month total (from all transactions, filtered to current month)
+  const currentMonthTransactions = transactions.filter(t => {
+    const txnDate = new Date(t.date)
+    return txnDate.getMonth() === currentMonth && txnDate.getFullYear() === currentYear
+  })
+  const monthTotal = currentMonthTransactions.reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+  const monthCount = currentMonthTransactions.length
+  const monthName = new Date().toLocaleDateString('en-US', { month: 'long' })
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -493,6 +511,20 @@ export default function ExpensesPage() {
             </div>
           </DialogContent>
         </Dialog>
+      </div>
+
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="glass-card p-4">
+          <p className="text-sm text-muted-foreground mb-1">{yearLabel} Total</p>
+          <p className="text-2xl font-bold text-red">{formatCurrency(yearTotal, 'ILS')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{yearCount} expense{yearCount !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="glass-card p-4">
+          <p className="text-sm text-muted-foreground mb-1">{monthName} {currentYear}</p>
+          <p className="text-2xl font-bold text-red">{formatCurrency(monthTotal, 'ILS')}</p>
+          <p className="text-xs text-muted-foreground mt-1">{monthCount} expense{monthCount !== 1 ? 's' : ''}</p>
+        </div>
       </div>
 
       {/* Filters */}

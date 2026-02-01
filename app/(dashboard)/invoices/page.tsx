@@ -119,7 +119,7 @@ export default function InvoicesPage() {
   }
 
   function formatCurrency(amount: number) {
-    return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', maximumFractionDigits: 0 }).format(amount)
+    return new Intl.NumberFormat('he-IL', { style: 'currency', currency: 'ILS', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
   }
 
   function formatDate(dateStr: string) {
