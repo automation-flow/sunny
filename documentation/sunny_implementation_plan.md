@@ -3104,3 +3104,96 @@ USD, EUR, GBP, CHF, CAD, AUD, JPY (and any other supported by the API)
 - Always filter `deleted_at IS NULL` in queries
 - React state with useState for client components
 - Single source of truth: this implementation plan
+
+---
+
+## 2026-02-01 - Partner Current Account (Jeru) Implementation
+
+### Changes:
+Complete rewrite of partner financial calculations to implement the "Partner Current Account" (Jeru) system.
+
+### New Partner Card Structure:
+```
+┌─────────────────────────────────────────┐
+│ PROFIT SHARING                          │
+│ Your Share of Revenue      ₪10,000     │  ← From invoice splits
+│ Your Share of Costs        -₪5,000     │  ← 50% of ALL expenses
+│ Your Share of Profits       ₪5,000     │
+├─────────────────────────────────────────┤
+│ CURRENT ACCOUNT                         │
+│ Out-of-Pocket (Reimburse)   +₪200      │  ← Private card for Business
+│ Benefits Received (Draws)   -₪1,500    │  ← Business paid for partner
+│ Current Account Balance     -₪1,300    │
+│ vs Shahar: -₪1,000                     │  ← Fairness comparison
+├─────────────────────────────────────────┤
+│ Already Withdrawn           -₪2,000    │
+│ Net Available               ₪1,700     │  ← Profits + Current - Withdrawn
+└─────────────────────────────────────────┘
+```
+
+### Calculation Logic:
+
+**Revenue per Partner** (varies based on invoice splits):
+```
+Partner Revenue = Σ(paid_invoice.net_amount × partner_split_percent / 100)
+```
+Note: Uses net amount (excludes VAT) for revenue calculations.
+
+**Costs per Partner** (always 50-50):
+```
+Partner Costs = Total ALL Expenses ÷ 2
+```
+
+**Out-of-Pocket** (Business owes partner):
+```
+WHERE account.partner_id = partner_id AND beneficiary = 'Business'
+→ Partner paid from PRIVATE card for BUSINESS expense
+```
+
+**Benefits Received** (Partner draws from business):
+```
+WHERE beneficiary = partner_name
+→ ANY expense marked for partner's personal benefit
+```
+
+**Current Account Balance**:
+```
+Current Account = Out-of-Pocket - Benefits Received
+Positive = Business owes partner
+Negative = Partner has drawn more than owed
+```
+
+**Net Available**:
+```
+Net Available = Profits + Current Account Balance - Already Withdrawn
+```
+
+### Files Modified:
+- `app/api/dashboard/route.ts`:
+  - Changed from `transactions` to `expenses` table
+  - Added join with `accounts` table to get partner_id
+  - Calculates revenue from invoice splits (not 50-50)
+  - Calculates costs as 50% of all expenses
+  - Calculates out-of-pocket vs benefits received
+  - Calculates fairness imbalance between partners
+  - Returns new data structure with all breakdown fields
+
+- `app/(dashboard)/partners/page.tsx`:
+  - Updated PartnerData interface with new fields
+  - PartnerCard now shows sectioned breakdown:
+    - Profit Sharing (Revenue, Costs, Profits)
+    - Current Account (Out-of-Pocket, Benefits, Balance)
+    - Fairness comparison ("vs Other Partner")
+    - Withdrawals
+    - Net Available (large, colored text)
+
+### Verification:
+- TypeScript check: ✅ Passed
+- Build: ✅ Passed
+
+### Notes:
+- Revenue is split per invoice (can be different % per invoice)
+- Costs are always split 50-50 regardless of who paid or benefited
+- Fairness line shows how much more/less you drew compared to other partner
+- Negative "vs Partner" (red) = you drew more benefits
+- Positive "vs Partner" (green) = you drew less benefits

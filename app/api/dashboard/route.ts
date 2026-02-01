@@ -15,10 +15,10 @@ export async function GET(request: Request) {
       .lte('date_issued', `${year}-12-31`)
       .is('deleted_at', null)
 
-    // Get all transactions for the year
-    const { data: transactions } = await supabase
-      .from('transactions')
-      .select('*, category:categories(parent_category)')
+    // Get all expenses for the year with account info
+    const { data: expenses } = await supabase
+      .from('expenses')
+      .select('*, category:categories(parent_category), account:accounts(id, name, type, partner_id)')
       .gte('date', `${year}-01-01`)
       .lte('date', `${year}-12-31`)
       .is('deleted_at', null)
@@ -36,45 +36,97 @@ export async function GET(request: Request) {
       .from('partners')
       .select('*')
 
+    const heliPartner = partners?.find(p => p.name === 'Heli')
+    const shaharPartner = partners?.find(p => p.name === 'Shahar')
+
     // Calculate income from paid invoices
     const paidInvoices = invoices?.filter(inv => inv.status === 'Paid') || []
     const totalIncome = paidInvoices.reduce((sum, inv) => sum + (inv.amount_ils || 0), 0)
 
     // Calculate expenses by parent category
-    const cogs = transactions?.filter(t => t.category?.parent_category === 'COGS')
+    const cogs = expenses?.filter(t => t.category?.parent_category === 'COGS')
       .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
-    const opex = transactions?.filter(t => t.category?.parent_category === 'OPEX')
+    const opex = expenses?.filter(t => t.category?.parent_category === 'OPEX')
       .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
-    const financial = transactions?.filter(t => t.category?.parent_category === 'Financial')
+    const financial = expenses?.filter(t => t.category?.parent_category === 'Financial')
+      .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
+    const mixed = expenses?.filter(t => t.category?.parent_category === 'Mixed')
       .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
 
-    const totalExpenses = cogs + opex + financial
+    const totalExpenses = cogs + opex + financial + mixed
     const grossProfit = totalIncome - cogs
     const grossMargin = totalIncome > 0 ? (grossProfit / totalIncome) * 100 : 0
     const netProfit = totalIncome - totalExpenses
 
-    // Calculate partner splits from paid invoices
-    const heliEarnings = paidInvoices.reduce((sum, inv) => {
+    // ==========================================
+    // PART A: PROFIT SHARING
+    // ==========================================
+
+    // Revenue per partner (from invoice splits, excluding VAT)
+    const heliRevenue = paidInvoices.reduce((sum, inv) => {
       const netAmount = inv.includes_vat ? (inv.amount_ils / (1 + inv.vat_rate)) : inv.amount_ils
       return sum + (netAmount * (inv.heli_split_percent / 100))
     }, 0)
-    const shaharEarnings = paidInvoices.reduce((sum, inv) => {
+    const shaharRevenue = paidInvoices.reduce((sum, inv) => {
       const netAmount = inv.includes_vat ? (inv.amount_ils / (1 + inv.vat_rate)) : inv.amount_ils
       return sum + (netAmount * (inv.shahar_split_percent / 100))
     }, 0)
 
-    // Calculate withdrawals per partner
+    // Costs per partner (50% of ALL expenses)
+    const partnerCosts = totalExpenses / 2
+
+    // Profits per partner
+    const heliProfits = heliRevenue - partnerCosts
+    const shaharProfits = shaharRevenue - partnerCosts
+
+    // ==========================================
+    // PART B: PARTNER CURRENT ACCOUNT (Jeru)
+    // ==========================================
+
+    // Out-of-Pocket: Partner paid from PRIVATE card for BUSINESS
+    // Business owes partner 100%
+    const heliOutOfPocket = expenses?.filter(e =>
+      e.account?.partner_id === heliPartner?.id &&
+      e.beneficiary === 'Business'
+    ).reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+
+    const shaharOutOfPocket = expenses?.filter(e =>
+      e.account?.partner_id === shaharPartner?.id &&
+      e.beneficiary === 'Business'
+    ).reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+
+    // Benefits Received (Draws): Expenses where beneficiary = partner name
+    // Partner draws from business equity
+    const heliBenefits = expenses?.filter(e => e.beneficiary === 'Heli')
+      .reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+
+    const shaharBenefits = expenses?.filter(e => e.beneficiary === 'Shahar')
+      .reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+
+    // Current Account Balance = Out-of-Pocket - Benefits
+    const heliCurrentAccount = heliOutOfPocket - heliBenefits
+    const shaharCurrentAccount = shaharOutOfPocket - shaharBenefits
+
+    // ==========================================
+    // PART C: FAIRNESS TRACKING
+    // ==========================================
+
+    // Benefits imbalance (positive = Heli drew more)
+    const benefitsImbalance = heliBenefits - shaharBenefits
+
+    // ==========================================
+    // PART D: FINAL CALCULATION
+    // ==========================================
+
+    // Withdrawals per partner
     const heliWithdrawals = withdrawals?.filter(w => w.partner?.name === 'Heli')
       .reduce((sum, w) => sum + w.amount, 0) || 0
     const shaharWithdrawals = withdrawals?.filter(w => w.partner?.name === 'Shahar')
       .reduce((sum, w) => sum + w.amount, 0) || 0
 
-    // Available to withdraw = earnings - already withdrawn
-    const heliAvailable = heliEarnings - heliWithdrawals
-    const shaharAvailable = shaharEarnings - shaharWithdrawals
-
-    // Partner difference (positive = Heli has more available)
-    const partnerDifference = heliAvailable - shaharAvailable
+    // Net Available = Profits + Current Account - Withdrawals
+    const heliNetAvailable = heliProfits + heliCurrentAccount - heliWithdrawals
+    const shaharNetAvailable = shaharProfits + shaharCurrentAccount - shaharWithdrawals
 
     // Open invoices (sent + overdue)
     const openInvoices = invoices?.filter(inv => inv.status === 'Sent' || inv.status === 'Overdue') || []
@@ -82,6 +134,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       data: {
+        // Summary stats
         totalIncome,
         cogs,
         opex,
@@ -90,29 +143,63 @@ export async function GET(request: Request) {
         grossProfit,
         grossMargin,
         netProfit,
+
+        // Partner data with new structure
         partners: {
           heli: {
-            id: partners?.find(p => p.name === 'Heli')?.id,
-            earnings: heliEarnings,
+            id: heliPartner?.id,
+            // Profit Sharing
+            revenue: heliRevenue,
+            costs: partnerCosts,
+            profits: heliProfits,
+            // Current Account
+            outOfPocket: heliOutOfPocket,
+            benefitsReceived: heliBenefits,
+            currentAccount: heliCurrentAccount,
+            // Fairness (vs other partner)
+            benefitsVsOther: -benefitsImbalance, // negative means drew more
+            // Final
             withdrawals: heliWithdrawals,
-            available: heliAvailable,
+            netAvailable: heliNetAvailable,
+            // Legacy fields for backward compatibility
+            earnings: heliRevenue,
+            available: heliNetAvailable,
           },
           shahar: {
-            id: partners?.find(p => p.name === 'Shahar')?.id,
-            earnings: shaharEarnings,
+            id: shaharPartner?.id,
+            // Profit Sharing
+            revenue: shaharRevenue,
+            costs: partnerCosts,
+            profits: shaharProfits,
+            // Current Account
+            outOfPocket: shaharOutOfPocket,
+            benefitsReceived: shaharBenefits,
+            currentAccount: shaharCurrentAccount,
+            // Fairness (vs other partner)
+            benefitsVsOther: benefitsImbalance, // positive means drew less
+            // Final
             withdrawals: shaharWithdrawals,
-            available: shaharAvailable,
+            netAvailable: shaharNetAvailable,
+            // Legacy fields for backward compatibility
+            earnings: shaharRevenue,
+            available: shaharNetAvailable,
           },
         },
-        partnerDifference,
+
+        // Overall fairness
+        benefitsImbalance,
+
+        // Open invoices
         openInvoices: {
           count: openInvoices.length,
           total: openInvoices.reduce((sum, inv) => sum + (inv.amount_ils || 0), 0),
           overdueCount: overdueInvoices.length,
           overdueTotal: overdueInvoices.reduce((sum, inv) => sum + (inv.amount_ils || 0), 0),
         },
+
+        // Counts
         invoiceCount: invoices?.length || 0,
-        transactionCount: transactions?.length || 0,
+        expenseCount: expenses?.length || 0,
       }
     })
   } catch (error) {

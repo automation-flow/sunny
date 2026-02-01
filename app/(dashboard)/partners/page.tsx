@@ -14,10 +14,23 @@ import type { Withdrawal, Partner } from '@/types'
 const WITHDRAWAL_METHODS = ['Bank_Transfer', 'Cash', 'Check'] as const
 
 interface PartnerData {
-  earnings: number
-  withdrawals: number
-  available: number
   id?: string
+  // Profit Sharing
+  revenue: number
+  costs: number
+  profits: number
+  // Current Account
+  outOfPocket: number
+  benefitsReceived: number
+  currentAccount: number
+  // Fairness
+  benefitsVsOther: number
+  // Final
+  withdrawals: number
+  netAvailable: number
+  // Legacy
+  earnings: number
+  available: number
 }
 
 export default function PartnersPage() {
@@ -140,7 +153,7 @@ export default function PartnersPage() {
                       <SelectItem value={heliPartner.id}>
                         <span>Heli</span>
                         <span className="text-muted-foreground ml-2">
-                          (Available: {formatCurrency(partnerData?.heli.available || 0)})
+                          (Available: {formatCurrency(partnerData?.heli.netAvailable || 0)})
                         </span>
                       </SelectItem>
                     )}
@@ -148,7 +161,7 @@ export default function PartnersPage() {
                       <SelectItem value={shaharPartner.id}>
                         <span>Shahar</span>
                         <span className="text-muted-foreground ml-2">
-                          (Available: {formatCurrency(partnerData?.shahar.available || 0)})
+                          (Available: {formatCurrency(partnerData?.shahar.netAvailable || 0)})
                         </span>
                       </SelectItem>
                     )}
@@ -211,6 +224,7 @@ export default function PartnersPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <PartnerCard
           name="Heli"
+          otherName="Shahar"
           color="heli"
           data={partnerData?.heli}
           loading={loading}
@@ -218,6 +232,7 @@ export default function PartnersPage() {
         />
         <PartnerCard
           name="Shahar"
+          otherName="Heli"
           color="shahar"
           data={partnerData?.shahar}
           loading={loading}
@@ -276,12 +291,14 @@ export default function PartnersPage() {
 
 function PartnerCard({
   name,
+  otherName,
   color,
   data,
   loading,
   formatCurrency
 }: {
   name: string
+  otherName: string
   color: 'heli' | 'shahar'
   data?: PartnerData
   loading: boolean
@@ -291,32 +308,72 @@ function PartnerCard({
 
   return (
     <Card className={`glass-card ${borderClass}`}>
-      <CardHeader>
-        <CardTitle className="text-xl">
-          {name}
-        </CardTitle>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-xl">{name}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {loading ? (
           <div className="text-muted-foreground">Loading...</div>
         ) : (
           <>
+            {/* Profit Sharing Section */}
             <div className="space-y-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Profit Sharing</p>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Earnings</span>
-                <span>{formatCurrency(data?.earnings || 0)}</span>
+                <span className="text-muted-foreground">Your Share of Revenue</span>
+                <span>{formatCurrency(data?.revenue || 0)}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Total Withdrawn</span>
-                <span>{formatCurrency(data?.withdrawals || 0)}</span>
+                <span className="text-muted-foreground">Your Share of Costs</span>
+                <span className="text-red">-{formatCurrency(data?.costs || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium border-t border-border/50 pt-2">
+                <span>Your Share of Profits</span>
+                <span className={(data?.profits || 0) >= 0 ? 'text-green' : 'text-red'}>
+                  {formatCurrency(data?.profits || 0)}
+                </span>
               </div>
             </div>
-            <div className="border-t border-border pt-4">
-              <p className="text-sm text-muted-foreground mb-2">
-                Available to Withdraw
-              </p>
-              <p className={`text-3xl font-bold ${(data?.available || 0) >= 0 ? 'text-green' : 'text-red'}`}>
-                {formatCurrency(data?.available || 0)}
+
+            {/* Current Account Section */}
+            <div className="space-y-2 pt-2">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Current Account</p>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Out-of-Pocket (Reimburse)</span>
+                <span className="text-green">+{formatCurrency(data?.outOfPocket || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Benefits Received (Draws)</span>
+                <span className="text-red">-{formatCurrency(data?.benefitsReceived || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm font-medium border-t border-border/50 pt-2">
+                <span>Current Account Balance</span>
+                <span className={(data?.currentAccount || 0) >= 0 ? 'text-green' : 'text-red'}>
+                  {(data?.currentAccount || 0) >= 0 ? '+' : ''}{formatCurrency(data?.currentAccount || 0)}
+                </span>
+              </div>
+              {/* Fairness comparison */}
+              <div className="flex justify-between text-xs pt-1">
+                <span className="text-muted-foreground">vs {otherName}</span>
+                <span className={(data?.benefitsVsOther || 0) >= 0 ? 'text-green' : 'text-red'}>
+                  {(data?.benefitsVsOther || 0) > 0 ? '+' : ''}{formatCurrency(data?.benefitsVsOther || 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* Withdrawals */}
+            <div className="space-y-2 pt-2">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Already Withdrawn</span>
+                <span>-{formatCurrency(data?.withdrawals || 0)}</span>
+              </div>
+            </div>
+
+            {/* Net Available */}
+            <div className="border-t border-border pt-4 mt-4">
+              <p className="text-sm text-muted-foreground mb-2">Net Available</p>
+              <p className={`text-3xl font-bold ${(data?.netAvailable || 0) >= 0 ? 'text-green' : 'text-red'}`}>
+                {formatCurrency(data?.netAvailable || 0)}
               </p>
             </div>
           </>
