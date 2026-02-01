@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TrendingUp, TrendingDown, AlertCircle, FileText, DollarSign, Percent, Users } from 'lucide-react'
+import { TrendingUp, TrendingDown, AlertCircle, FileText, DollarSign, Percent } from 'lucide-react'
 
 interface DashboardData {
   totalIncome: number
@@ -17,7 +17,6 @@ interface DashboardData {
     heli: { earnings: number; withdrawals: number; available: number }
     shahar: { earnings: number; withdrawals: number; available: number }
   }
-  partnerDifference: number
   openInvoices: {
     count: number
     total: number
@@ -63,12 +62,6 @@ export default function DashboardPage() {
     )
   }
 
-  const partnerDiffText = data?.partnerDifference === 0
-    ? 'Even'
-    : data?.partnerDifference && data.partnerDifference > 0
-      ? `Heli +${formatCurrency(Math.abs(data.partnerDifference))}`
-      : `Shahar +${formatCurrency(Math.abs(data?.partnerDifference || 0))}`
-
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-semibold">Dashboard</h1>
@@ -102,19 +95,13 @@ export default function DashboardPage() {
       </div>
 
       {/* Secondary Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatsCard
           title="Net Profit"
           value={formatCurrency(data?.netProfit || 0)}
           valueColor={data?.netProfit && data.netProfit >= 0 ? 'text-green' : 'text-red'}
           icon={data?.netProfit && data.netProfit >= 0 ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
           iconColor={data?.netProfit && data.netProfit >= 0 ? 'text-green' : 'text-red'}
-        />
-        <StatsCard
-          title="Partner Balance"
-          value={partnerDiffText}
-          icon={<Users className="w-5 h-5" />}
-          iconColor="text-blue"
         />
 
         {/* Open Invoices Card */}
