@@ -13,6 +13,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Sun,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { YearSelector } from './year-selector'
@@ -108,6 +109,17 @@ export function Sidebar() {
           })}
         </ul>
       </nav>
+
+      {/* Ask Sunny Button */}
+      <div className="px-3 mb-2">
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('toggle-sunny-chat'))}
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium bg-gradient-to-r from-yellow/10 to-orange/10 text-yellow hover:from-yellow/20 hover:to-orange/20 transition-all border border-yellow/20"
+        >
+          <Sun className="w-5 h-5" />
+          Ask Sunny
+        </button>
+      </div>
 
       {/* User Section */}
       <div className="p-4 border-t border-border">

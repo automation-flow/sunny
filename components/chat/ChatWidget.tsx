@@ -31,6 +31,13 @@ export function ChatWidget() {
     }
   }, [isOpen])
 
+  // Listen for toggle event from sidebar
+  useEffect(() => {
+    const handleToggle = () => setIsOpen(prev => !prev)
+    window.addEventListener('toggle-sunny-chat', handleToggle)
+    return () => window.removeEventListener('toggle-sunny-chat', handleToggle)
+  }, [])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!input.trim() || isLoading) return
