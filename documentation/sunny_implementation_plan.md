@@ -3245,3 +3245,63 @@ Updated all currency display across the app to show 2 decimal places (e.g., ₪2
 │ 23 expenses         │  │ 5 expenses          │
 └─────────────────────┘  └─────────────────────┘
 ```
+
+---
+
+## 2026-02-02 - Sunny AI Chatbot
+
+### Changes:
+Added Sunny AI chatbot - an embedded AI assistant powered by Google Gemini that acts as your CFO consultant.
+
+### Features:
+- **Floating chat widget** in bottom-right corner on all dashboard pages
+- **Google Gemini 1.5 Flash** for responses (free tier: 1M tokens/month)
+- **Auto-detects language** (Hebrew or English)
+- **Full CFO knowledge**: Israeli tax law 2026, expense categories, partner calculations
+- **Product knowledge**: How to use Sunny ERP features
+- **Login required**: Only authenticated users can chat
+
+### Files Created:
+- `lib/chat/sunny-system-prompt.ts` - Comprehensive system prompt with all business logic
+- `app/api/chat/route.ts` - Gemini API endpoint with authentication
+- `components/chat/ChatWidget.tsx` - Floating chat UI component
+
+### Files Modified:
+- `app/(dashboard)/layout.tsx` - Added ChatWidget to layout
+- `.env.example` - Added GOOGLE_GEMINI_API_KEY
+
+### Dependencies Added:
+- `@google/generative-ai` - Google Gemini SDK
+- `ai` - Vercel AI SDK
+- `react-markdown` - Markdown rendering in chat
+
+### Setup Required:
+1. Get API key from https://aistudio.google.com/
+2. Add to `.env.local`: `GOOGLE_GEMINI_API_KEY=your-key`
+3. Deploy
+
+### System Prompt Includes:
+- Business context (Automation Flow, partners, structure)
+- Israeli tax categories with percentages (2026)
+- Partner Current Account logic (Jeru)
+- Sunny ERP product documentation
+- How-to guides for common tasks
+- Example interactions
+
+### Verification:
+- TypeScript check: ✅ Passed
+- Build: ✅ Passed
+
+### UI Design:
+```
+Floating button:     Chat panel (expanded):
+┌────────────┐       ┌───────────────────────────┐
+│ ☀️ Ask     │  -->  │ ☀️ Sunny                 X│
+│   Sunny    │       │ Your AI CFO               │
+└────────────┘       ├───────────────────────────┤
+                     │ 👤 User message           │
+                     │ ☀️ Sunny response...      │
+                     ├───────────────────────────┤
+                     │ [Ask Sunny anything...]  ➤│
+                     └───────────────────────────┘
+```
