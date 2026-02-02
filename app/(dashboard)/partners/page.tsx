@@ -353,13 +353,25 @@ function PartnerCard({
                   {(data?.currentAccount || 0) >= 0 ? '+' : ''}{formatCurrency(data?.currentAccount || 0)}
                 </span>
               </div>
-              {/* Fairness comparison */}
-              <div className="flex justify-between text-xs pt-1">
-                <span className="text-muted-foreground">vs {otherName}</span>
-                <span className={(data?.benefitsVsOther || 0) >= 0 ? 'text-green' : 'text-red'}>
-                  {(data?.benefitsVsOther || 0) > 0 ? '+' : ''}{formatCurrency(data?.benefitsVsOther || 0)}
-                </span>
-              </div>
+              {/* Settlement action text */}
+              {(data?.benefitsVsOther || 0) !== 0 && (
+                <div className="text-xs pt-1">
+                  {(data?.benefitsVsOther || 0) > 0 ? (
+                    <span className="text-green">
+                      To balance: {otherName} pays you {formatCurrency(Math.abs(data?.benefitsVsOther || 0) / 2)}
+                    </span>
+                  ) : (
+                    <span className="text-red">
+                      To balance: You pay {otherName} {formatCurrency(Math.abs(data?.benefitsVsOther || 0) / 2)}
+                    </span>
+                  )}
+                </div>
+              )}
+              {(data?.benefitsVsOther || 0) === 0 && (
+                <div className="text-xs pt-1">
+                  <span className="text-muted-foreground">✓ Balanced with {otherName}</span>
+                </div>
+              )}
             </div>
 
             {/* Withdrawals */}

@@ -10,6 +10,12 @@ export async function GET(request: Request) {
   const search = searchParams.get('search')
   const category_id = searchParams.get('category_id')
   const beneficiary = searchParams.get('beneficiary')
+  const includeTaxOnly = searchParams.get('include_tax_only') === 'true'
+
+  // Get partners for tax-only filtering
+  const { data: partners } = await supabase.from('partners').select('id, name')
+  const heliPartner = partners?.find(p => p.name === 'Heli')
+  const shaharPartner = partners?.find(p => p.name === 'Shahar')
 
   let query = supabase
     .from('expenses')
@@ -42,7 +48,26 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  return NextResponse.json({ data })
+  // Filter out tax-only transactions unless explicitly requested
+  // Tax-only = Partner paid from private card for their OWN benefit
+  let filteredData = data
+  if (!includeTaxOnly && data) {
+    filteredData = data.filter(e => {
+      const accountPartnerId = e.account?.partner_id
+      if (!accountPartnerId) return true // Business account - keep
+
+      // Exclude if partner paid for their own benefit
+      const isHeliAccount = accountPartnerId === heliPartner?.id
+      const isShaharAccount = accountPartnerId === shaharPartner?.id
+
+      if (isHeliAccount && e.beneficiary === 'Heli') return false
+      if (isShaharAccount && e.beneficiary === 'Shahar') return false
+
+      return true
+    })
+  }
+
+  return NextResponse.json({ data: filteredData })
 }
 
 export async function POST(request: Request) {

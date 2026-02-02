@@ -15,13 +15,33 @@ export async function GET(request: Request) {
       .lte('date_issued', `${year}-12-31`)
       .is('deleted_at', null)
 
-    // Get all transactions for the year
-    const { data: transactions } = await supabase
+    // Get all transactions for the year (with account info for tax-only filtering)
+    const { data: allTransactions } = await supabase
       .from('transactions')
-      .select('*, category:categories(name, parent_category)')
+      .select('*, category:categories(name, parent_category), account:accounts(id, partner_id)')
       .gte('date', `${year}-01-01`)
       .lte('date', `${year}-12-31`)
       .is('deleted_at', null)
+
+    // Get partners for tax-only detection
+    const { data: partners } = await supabase.from('partners').select('id, name')
+    const heliPartner = partners?.find(p => p.name === 'Heli')
+    const shaharPartner = partners?.find(p => p.name === 'Shahar')
+
+    // Filter out tax-only transactions (partner paid for own benefit)
+    const transactions = allTransactions?.filter(e => {
+      const accountPartnerId = e.account?.partner_id
+      if (!accountPartnerId) return true // Business account - keep
+
+      // Exclude if partner paid for their own benefit
+      const isHeliAccount = accountPartnerId === heliPartner?.id
+      const isShaharAccount = accountPartnerId === shaharPartner?.id
+
+      if (isHeliAccount && e.beneficiary === 'Heli') return false
+      if (isShaharAccount && e.beneficiary === 'Shahar') return false
+
+      return true
+    }) || []
 
     // Monthly income (from paid invoices)
     const monthlyIncome: Record<string, number> = {}
@@ -38,7 +58,7 @@ export async function GET(request: Request) {
       monthlyIncome[months[month]] += inv.amount_ils || 0
     })
 
-    transactions?.forEach(txn => {
+    transactions.forEach(txn => {
       const month = new Date(txn.date).getMonth()
       monthlyExpenses[months[month]] += txn.amount_ils || 0
     })
@@ -52,7 +72,7 @@ export async function GET(request: Request) {
 
     // Expenses by category
     const categoryExpenses: Record<string, number> = {}
-    transactions?.forEach(txn => {
+    transactions.forEach(txn => {
       const catName = txn.category?.name || 'Unknown'
       categoryExpenses[catName] = (categoryExpenses[catName] || 0) + (txn.amount_ils || 0)
     })
@@ -64,7 +84,7 @@ export async function GET(request: Request) {
 
     // Expenses by parent category
     const parentCategoryExpenses: Record<string, number> = { COGS: 0, OPEX: 0, Financial: 0 }
-    transactions?.forEach(txn => {
+    transactions.forEach(txn => {
       const parent = txn.category?.parent_category || 'OPEX'
       parentCategoryExpenses[parent] += txn.amount_ils || 0
     })
@@ -94,7 +114,7 @@ export async function GET(request: Request) {
     // Summary stats
     const totalIncome = invoices?.filter(inv => inv.status === 'Paid')
       .reduce((sum, inv) => sum + (inv.amount_ils || 0), 0) || 0
-    const totalExpenses = transactions?.reduce((sum, txn) => sum + (txn.amount_ils || 0), 0) || 0
+    const totalExpenses = transactions.reduce((sum, txn) => sum + (txn.amount_ils || 0), 0)
 
     return NextResponse.json({
       data: {

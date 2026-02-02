@@ -39,19 +39,39 @@ export async function GET(request: Request) {
     const heliPartner = partners?.find(p => p.name === 'Heli')
     const shaharPartner = partners?.find(p => p.name === 'Shahar')
 
+    // ==========================================
+    // FILTER: Exclude Tax-Only Transactions
+    // Tax-only = Partner paid from private card for their OWN benefit
+    // These are recorded for tax purposes only, not business calculations
+    // ==========================================
+    // Business expenses = all expenses EXCEPT tax-only
+    const businessExpenses = expenses?.filter(e => {
+      const accountPartnerId = e.account?.partner_id
+      if (!accountPartnerId) return true // Business account - keep
+
+      // Check if the partner who paid is the same as the beneficiary (tax-only)
+      const isHeliAccount = accountPartnerId === heliPartner?.id
+      const isShaharAccount = accountPartnerId === shaharPartner?.id
+
+      if (isHeliAccount && e.beneficiary === 'Heli') return false // Tax-only - exclude
+      if (isShaharAccount && e.beneficiary === 'Shahar') return false // Tax-only - exclude
+
+      return true
+    }) || []
+
     // Calculate income from paid invoices
     const paidInvoices = invoices?.filter(inv => inv.status === 'Paid') || []
     const totalIncome = paidInvoices.reduce((sum, inv) => sum + (inv.amount_ils || 0), 0)
 
-    // Calculate expenses by parent category
-    const cogs = expenses?.filter(t => t.category?.parent_category === 'COGS')
-      .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
-    const opex = expenses?.filter(t => t.category?.parent_category === 'OPEX')
-      .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
-    const financial = expenses?.filter(t => t.category?.parent_category === 'Financial')
-      .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
-    const mixed = expenses?.filter(t => t.category?.parent_category === 'Mixed')
-      .reduce((sum, t) => sum + (t.amount_ils || 0), 0) || 0
+    // Calculate expenses by parent category (excluding tax-only)
+    const cogs = businessExpenses.filter(t => t.category?.parent_category === 'COGS')
+      .reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+    const opex = businessExpenses.filter(t => t.category?.parent_category === 'OPEX')
+      .reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+    const financial = businessExpenses.filter(t => t.category?.parent_category === 'Financial')
+      .reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+    const mixed = businessExpenses.filter(t => t.category?.parent_category === 'Mixed')
+      .reduce((sum, t) => sum + (t.amount_ils || 0), 0)
 
     const totalExpenses = cogs + opex + financial + mixed
     const grossProfit = totalIncome - cogs
@@ -95,13 +115,17 @@ export async function GET(request: Request) {
       e.beneficiary === 'Business'
     ).reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
 
-    // Benefits Received (Draws): Expenses where beneficiary = partner name
-    // Partner draws from business equity
-    const heliBenefits = expenses?.filter(e => e.beneficiary === 'Heli')
-      .reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+    // Benefits Received (Draws): BUSINESS paid for partner's personal benefit
+    // Only counts when business account paid (not when partner paid for themselves)
+    const heliBenefits = expenses?.filter(e =>
+      e.beneficiary === 'Heli' &&
+      e.account?.partner_id !== heliPartner?.id // Business paid, not Heli's private card
+    ).reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
 
-    const shaharBenefits = expenses?.filter(e => e.beneficiary === 'Shahar')
-      .reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
+    const shaharBenefits = expenses?.filter(e =>
+      e.beneficiary === 'Shahar' &&
+      e.account?.partner_id !== shaharPartner?.id // Business paid, not Shahar's private card
+    ).reduce((sum, e) => sum + (e.amount_ils || 0), 0) || 0
 
     // Current Account Balance = Out-of-Pocket - Benefits
     const heliCurrentAccount = heliOutOfPocket - heliBenefits
@@ -199,7 +223,7 @@ export async function GET(request: Request) {
 
         // Counts
         invoiceCount: invoices?.length || 0,
-        expenseCount: expenses?.length || 0,
+        expenseCount: businessExpenses.length,
       }
     })
   } catch (error) {
