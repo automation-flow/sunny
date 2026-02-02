@@ -316,10 +316,62 @@ export default function ExpensesPage() {
     return <span className="text-muted-foreground">—</span>
   }
 
-  const filteredTransactions = transactions.filter(t =>
-    t.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
-    t.notes?.toLowerCase().includes(search.toLowerCase())
-  )
+  // Smart search filter - supports free text queries
+  // Examples: "Account = Heli", "Beneficiary = Business", "Category = COGS"
+  // Also supports: "Heli & Business", "OpenAI", simple text search
+  const filteredTransactions = transactions.filter(t => {
+    if (!search.trim()) return true
+
+    const searchLower = search.toLowerCase().trim()
+
+    // Check for structured queries with "=" or ":"
+    const hasStructuredQuery = searchLower.includes('=') || searchLower.includes(':')
+
+    if (hasStructuredQuery) {
+      // Split by & for multiple conditions
+      const conditions = searchLower.split(/\s*&\s*/)
+
+      return conditions.every(condition => {
+        const [field, value] = condition.split(/\s*[=:]\s*/).map(s => s.trim())
+
+        if (!field || !value) return true // Invalid condition, skip
+
+        // Match fields
+        if (field.includes('account')) {
+          return t.account?.name?.toLowerCase().includes(value)
+        }
+        if (field.includes('beneficiary') || field.includes('for')) {
+          return t.beneficiary.toLowerCase().includes(value)
+        }
+        if (field.includes('category') || field.includes('cat')) {
+          return t.category?.name?.toLowerCase().includes(value) ||
+            t.category?.parent_category?.toLowerCase().includes(value)
+        }
+        if (field.includes('supplier')) {
+          return t.supplier_name.toLowerCase().includes(value)
+        }
+        if (field.includes('notes')) {
+          return t.notes?.toLowerCase().includes(value)
+        }
+
+        return true
+      })
+    }
+
+    // Simple text search - search across multiple fields
+    return (
+      t.supplier_name.toLowerCase().includes(searchLower) ||
+      t.notes?.toLowerCase().includes(searchLower) ||
+      t.account?.name?.toLowerCase().includes(searchLower) ||
+      t.beneficiary.toLowerCase().includes(searchLower) ||
+      t.category?.name?.toLowerCase().includes(searchLower) ||
+      t.category?.parent_category?.toLowerCase().includes(searchLower)
+    )
+  })
+
+  // Calculate filtered total
+  const filteredTotal = filteredTransactions.reduce((sum, t) => sum + (t.amount_ils || 0), 0)
+  const isFiltered = search.trim().length > 0
 
   // Calculate totals for summary cards
   const currentMonth = new Date().getMonth()
@@ -343,14 +395,11 @@ export default function ExpensesPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Expenses</h1>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button className="bg-blue hover:bg-blue/90">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Expense
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
+      </div>
+
+      {/* Add Expense Dialog */}
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>Add Expense</DialogTitle>
             </DialogHeader>
@@ -511,7 +560,6 @@ export default function ExpensesPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </div>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -528,30 +576,47 @@ export default function ExpensesPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search expenses..."
-            className="pl-10"
-          />
+      <div className="space-y-2">
+        <div className="flex items-center gap-4">
+          <div className="relative w-[300px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search or filter (e.g. account=Heli)"
+              className="pl-10"
+            />
+          </div>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[140px]">
+              <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Time</SelectItem>
+              {availableYears.map((year) => (
+                <SelectItem key={year} value={String(year)}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button className="bg-blue hover:bg-blue/90" onClick={() => setDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-2" />
+            Add Expense
+          </Button>
         </div>
-        <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="w-[140px]">
-            <Calendar className="w-4 h-4 mr-2 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Time</SelectItem>
-            {availableYears.map((year) => (
-              <SelectItem key={year} value={String(year)}>
-                {year}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+
+        {/* Filtered results info */}
+        {isFiltered && (
+          <div className="text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">{filteredTransactions.length}</span> expense{filteredTransactions.length !== 1 ? 's' : ''}{' '}
+            <span className="text-muted-foreground">(filtered by: &quot;{search}&quot;)</span>
+            <span className="mx-2">•</span>
+            <span>Filtered Total: </span>
+            <span className="font-medium text-red">{formatCurrency(filteredTotal, 'ILS')}</span>
+          </div>
+        )}
       </div>
 
       {/* Table */}
