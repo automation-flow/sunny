@@ -10,7 +10,6 @@ export async function GET(request: Request) {
   const search = searchParams.get('search')
   const category_id = searchParams.get('category_id')
   const beneficiary = searchParams.get('beneficiary')
-  const includeTaxOnly = searchParams.get('include_tax_only') === 'true'
 
   // Get partners for tax-only filtering
   const { data: partners } = await supabase.from('partners').select('id, name')
@@ -48,26 +47,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  // Filter out tax-only transactions unless explicitly requested
-  // Tax-only = Partner paid from private card for their OWN benefit
-  let filteredData = data
-  if (!includeTaxOnly && data) {
-    filteredData = data.filter(e => {
-      const accountPartnerId = e.account?.partner_id
-      if (!accountPartnerId) return true // Business account - keep
+  // Mark tax-only transactions (partner paid from private card for OWN benefit)
+  // These are visible in the expenses list but excluded from business calculations
+  const enrichedData = data?.map(e => {
+    const accountPartnerId = e.account?.partner_id
+    let isTaxOnly = false
 
-      // Exclude if partner paid for their own benefit
+    if (accountPartnerId) {
       const isHeliAccount = accountPartnerId === heliPartner?.id
       const isShaharAccount = accountPartnerId === shaharPartner?.id
 
-      if (isHeliAccount && e.beneficiary === 'Heli') return false
-      if (isShaharAccount && e.beneficiary === 'Shahar') return false
+      if (isHeliAccount && e.beneficiary === 'Heli') isTaxOnly = true
+      if (isShaharAccount && e.beneficiary === 'Shahar') isTaxOnly = true
+    }
 
-      return true
-    })
-  }
+    return { ...e, is_tax_only: isTaxOnly }
+  }) || []
 
-  return NextResponse.json({ data: filteredData })
+  return NextResponse.json({ data: enrichedData })
 }
 
 export async function POST(request: Request) {

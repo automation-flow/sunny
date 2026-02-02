@@ -37,6 +37,9 @@ export default function ExpensesPage() {
   const [editingExpense, setEditingExpense] = useState<Transaction | null>(null)
   const [deletingExpense, setDeletingExpense] = useState<Transaction | null>(null)
 
+  // Prevent double-submit
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const [form, setForm] = useState({
     date: new Date().toISOString().split('T')[0],
     supplier_name: '',
@@ -96,6 +99,9 @@ export default function ExpensesPage() {
   }
 
   async function handleAddExpense() {
+    // Prevent double-submit
+    if (isSubmitting) return
+
     if (!form.supplier_name || !form.amount || !form.category_id || !form.account_id) {
       toast.error('Please fill in all required fields')
       return
@@ -104,6 +110,8 @@ export default function ExpensesPage() {
       toast.error('Please specify the day of month for recurring expenses')
       return
     }
+
+    setIsSubmitting(true)
     try {
       const res = await fetch('/api/expenses', {
         method: 'POST',
@@ -143,6 +151,8 @@ export default function ExpensesPage() {
       fetchData()
     } catch {
       toast.error('Failed to add expense')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -554,8 +564,12 @@ export default function ExpensesPage() {
                 </div>
               )}
 
-              <Button onClick={handleAddExpense} className="w-full bg-blue hover:bg-blue/90">
-                {form.is_recurring ? 'Add Recurring Expense' : 'Add Expense'}
+              <Button
+                onClick={handleAddExpense}
+                disabled={isSubmitting}
+                className="w-full bg-blue hover:bg-blue/90"
+              >
+                {isSubmitting ? 'Adding...' : (form.is_recurring ? 'Add Recurring Expense' : 'Add Expense')}
               </Button>
             </div>
           </DialogContent>
