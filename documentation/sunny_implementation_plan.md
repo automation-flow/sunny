@@ -3305,3 +3305,50 @@ Floating button:     Chat panel (expanded):
                      │ [Ask Sunny anything...]  ➤│
                      └───────────────────────────┘
 ```
+
+---
+
+## 2026-02-02 - Tax-Only Transactions & Partner Settlement UI
+
+### Overview:
+Implemented filtering for "tax-only" transactions and improved the Partner page settlement display.
+
+### What are Tax-Only Transactions?
+When a partner pays from their **private card** for their **own benefit** (e.g., Heli pays for her phone bill from her private card):
+- This is recorded for **tax purposes only** (future Green Invoice automation)
+- It should NOT appear in business calculations because:
+  - No business money was spent
+  - No business benefit was received
+  - Partner paid for themselves → net business impact = 0
+
+### Transaction Classification:
+
+| Payment Account | Beneficiary | Type | Visible? | Effect |
+|----------------|-------------|------|----------|--------|
+| Partner (private) | Business | **Out-of-Pocket** | ✅ Yes | Business owes partner |
+| Business | Partner | **Benefits Received** | ✅ Yes | Partner owes business |
+| Partner (private) | **Same** Partner | **Tax-Only** | ❌ No | Excluded from all calcs |
+| Business | Business | **Normal Expense** | ✅ Yes | Standard business expense |
+
+### Files Modified:
+- `app/api/dashboard/route.ts` - Exclude tax-only from all calculations
+- `app/api/analytics/route.ts` - Exclude tax-only from charts/aggregations
+- `app/api/expenses/route.ts` - Filter tax-only (use `?include_tax_only=true` to include)
+- `app/(dashboard)/partners/page.tsx` - Action-oriented settlement text
+
+### Partner Page Settlement UI:
+Changed from confusing "vs Shahar: +9,861.40₪" to action-oriented text:
+- "To balance: Shahar pays you ₪4,930.70" (if owed money)
+- "To balance: You pay Shahar ₪4,930.70" (if you owe)
+- "✓ Balanced with Shahar" (if equal)
+
+### Settlement Process:
+Settlements happen naturally through withdrawals - no special feature needed.
+When the UI shows "To balance: Shahar pays you ₪X":
+- Heli can withdraw ₪X more in her next withdrawal
+- OR Shahar can withdraw ₪X less
+- The "Net Available" amounts will adjust accordingly
+
+### Verification:
+- TypeScript check: ✅ Passed
+- Build: ✅ Passed
