@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
     // Get the model
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash',
+      model: 'gemini-2.0-flash',
       systemInstruction: SUNNY_SYSTEM_PROMPT,
     })
 
