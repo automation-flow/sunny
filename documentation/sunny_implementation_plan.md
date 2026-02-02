@@ -3327,14 +3327,18 @@ When a partner pays from their **private card** for their **own benefit** (e.g.,
 |----------------|-------------|------|----------|--------|
 | Partner (private) | Business | **Out-of-Pocket** | ✅ Yes | Business owes partner |
 | Business | Partner | **Benefits Received** | ✅ Yes | Partner owes business |
-| Partner (private) | **Same** Partner | **Tax-Only** | ❌ No | Excluded from all calcs |
+| Partner (private) | **Same** Partner | **Tax-Only** | **✅ Table Only** | Visible in expenses, excluded from calcs |
 | Business | Business | **Normal Expense** | ✅ Yes | Standard business expense |
+
+### CORRECTION (2026-02-02):
+Tax-only expenses should be **visible in the Expenses table** but excluded from calculations. Updated `app/api/expenses/route.ts` to return all expenses with `is_tax_only` flag instead of filtering.
 
 ### Files Modified:
 - `app/api/dashboard/route.ts` - Exclude tax-only from all calculations
 - `app/api/analytics/route.ts` - Exclude tax-only from charts/aggregations
-- `app/api/expenses/route.ts` - Filter tax-only (use `?include_tax_only=true` to include)
+- `app/api/expenses/route.ts` - Returns ALL expenses with `is_tax_only` flag
 - `app/(dashboard)/partners/page.tsx` - Action-oriented settlement text
+- `app/(dashboard)/expenses/page.tsx` - Smart search, responsive layout, double-submit prevention
 
 ### Partner Page Settlement UI:
 Changed from confusing "vs Shahar: +9,861.40₪" to action-oriented text:
@@ -3348,6 +3352,11 @@ When the UI shows "To balance: Shahar pays you ₪X":
 - Heli can withdraw ₪X more in her next withdrawal
 - OR Shahar can withdraw ₪X less
 - The "Net Available" amounts will adjust accordingly
+
+### Expenses Page UI (2026-02-02):
+**Layout:** `[Search (flex-1)] ←→ [Year Filter] [+ Add Expense]`
+**Smart Search:** `account=Heli & beneficiary=Business` or simple text
+**Double-Submit Prevention:** Button disables during submission
 
 ### Verification:
 - TypeScript check: ✅ Passed
