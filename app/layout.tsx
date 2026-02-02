@@ -11,6 +11,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: 'Sunny - Automation Flow CFO',
   description: 'Financial management system for Automation Flow partnership',
+  icons: {
+    icon: '/logo.png',
+    apple: '/logo.png',
+  },
 }
 
 export default function RootLayout({
